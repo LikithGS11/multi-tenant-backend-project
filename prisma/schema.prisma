@@ -1,0 +1,75 @@
+// Prisma Schema for Multi-Tenant Material Inventory System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Tenant Model
+model Tenant {
+  id           String        @id @default(cuid())
+  name         String
+  plan         String        @default("FREE") // FREE or PRO
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  // Relations
+  users        User[]
+  materials    Material[]
+  transactions Transaction[]
+}
+
+// User Model
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  email     String   @unique
+  role      String   @default("USER") // ADMIN or USER
+  createdAt DateTime @default(now())
+  
+  // Relations
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
+}
+
+// Material Model
+model Material {
+  id           String        @id @default(cuid())
+  tenantId     String
+  name         String
+  unit         String
+  currentStock Int           @default(0)
+  deletedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  // Relations
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  
+  @@index([tenantId])
+  @@index([tenantId, deletedAt])
+}
+
+// Transaction Model
+model Transaction {
+  id         String   @id @default(cuid())
+  tenantId   String
+  materialId String
+  type       String   // IN or OUT
+  quantity   Int
+  createdAt  DateTime @default(now())
+  
+  // Relations
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
+  @@index([materialId])
+}
